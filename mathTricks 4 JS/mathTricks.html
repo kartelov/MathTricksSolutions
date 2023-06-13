@@ -11,7 +11,7 @@
 
     .board {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       grid-gap: 10px;
       margin: 20px auto;
       width: 620px;
@@ -26,6 +26,16 @@
       font-size: 24px;
       background-color: #e9e9e9;
     }
+    .player1-next-cell {
+      border: 5px dashed  #ff8080;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+    .player2-next-cell {
+      border: 5px dashed  #80b3ff;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
 
     .player1-start {
       background-color: #ff8080;
@@ -33,6 +43,13 @@
 
     .player2-start {
       background-color: #80b3ff;
+    }
+    .player1-pass {
+      background-color: #ffcccc;
+    }
+
+    .player2-pass {
+      background-color: #ccd9ff;
     }
 
     .math-action {
@@ -49,36 +66,21 @@
       text-align: right;
       margin-right: 10px;
     }
+    
 
-    .button {
-      display: inline-block;
-      width: 100px;
-      height: 40px;
-      margin-top: 10px;
-      font-size: 16px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-
-    .button.active {
-      background-color: #999999;
-      cursor: default;
-    }
+    
   </style>
 </head>
 <body>
   <h1>MathTricks 4 JS</h1>
 
-  <div>
+  <div class="boardsetup" id="boardSetupContainer">
     <textarea id="rows-input" placeholder="Number of rows"></textarea>
     <textarea id="cols-input" placeholder="Number of columns"></textarea>
     <button id="submit-button">Submit</button>
   </div>
 
-  <div class="board"></div>
-
+  
   <div class="statistics">
     <label>Total Games:</label>
     <span id="total-games">0</span><br>
@@ -96,130 +98,363 @@
     <span id="player2-score">0</span><br>
   </div>
 
-  <div class="buttons">
-    <button id="up-left-button" class="button">↖</button>
-    <button id="up-button" class="button">↑</button>
-    <button id="up-right-button" class="button">↗</button>
-    <br>
-    <button id="left-button" class="button">←</button>
-    <button id="position-button" class="button active">Position</button>
-    <button id="right-button" class="button">→</button>
-    <br>
-    <button id="down-left-button" class="button">↙</button>
-    <button id="down-button" class="button">↓</button>
-    <button id="down-right-button" class="button">↘</button>
-  </div>
+  <div class="board" id="boardContainer"></div>
+
+
+  
 
   <script>
-    // Get references to the relevant elements
-    const boardContainer = document.querySelector('.board');
+    
     const rowsInput = document.getElementById('rows-input');
     const colsInput = document.getElementById('cols-input');
     const submitButton = document.getElementById('submit-button');
-    // Event listeners for navigation buttons
-    document.getElementById('up-left-button').addEventListener('click', moveUpLeft);
-    document.getElementById('up-button').addEventListener('click', moveUp);
-    document.getElementById('up-right-button').addEventListener('click', moveUpRight);
-    document.getElementById('left-button').addEventListener('click', moveLeft);
-    document.getElementById('right-button').addEventListener('click', moveRight);
-    document.getElementById('down-left-button').addEventListener('click', moveDownLeft);
-    document.getElementById('down-button').addEventListener('click', moveDown);
-    document.getElementById('down-right-button').addEventListener('click', moveDownRight);
-    // Move player up
-    function moveUp() {
-    // Code for moving player up
+    
+    //
+    class Cell {
+      constructor(digit) {
+        this.digit = digit;
+        this.mathAction = null;
+        this.visitedByPlayer = null;
+        this.activeByPlayer = null;
+      }
+
+      setDigit(digit) {
+        this.digit = digit;
+      }
+
+      getDigit() {
+        return this.digit;
+      }
+
+      setMathAction(action) {
+        this.mathAction = action;
+      }
+
+      getMathAction() {
+        return this.mathAction;
+      }
+
+      setVisitedByPlayer(player) {
+        this.visitedByPlayer = player;
+      }
+
+      isVisitedByPlayer(player) {
+        return this.visitedByPlayer === player || this.isActiveByPlayer(player);
+      }
+      setActiveByPlayer(player) {
+        this.activeByPlayer = player;
+      }
+
+      isActiveByPlayer(player) {
+        return this.activeByPlayer === player;
+      }
     }
 
-    // Move player up-right
-    function moveUpRight() {
-    // Code for moving player up-right
+    class Board {
+      constructor(rows, columns) {
+        this.rows = rows;
+        this.columns = columns;
+        this.cells = new Array(rows * columns);
+        this.fillBoardWithRandomDigitsAndActions();
+      }
+
+      updateDimensions(newRows, newColumns) {
+        const newBoard = new Board(newRows, newColumns);
+
+        this.board = newBoard;
+        this.rows = newRows;
+        this.columns = newColumns;
+
+        players.player2Position.row = newRows-1;
+        players.player2Position.col = newColumns-1;
+
+        this.fillBoardWithRandomDigitsAndActions();
+      }
+
+      fillBoardWithRandomDigitsAndActions() {
+        
+        const actions = ['+', '-', '*', '/', ' '];
+        
+        // Generate random digits and actions for each cell
+        for (let row = 0; row < this.rows; row++) {
+          for (let column = 0; column < this.columns; column++) {
+            const cell = new Cell(Math.floor(Math.random() * 9) + 1); // Random digit
+
+            // Assign a random mathematical action
+            cell.setMathAction(actions[Math.floor(Math.random() * 4)]);
+
+          
+            // Set the cell in the board
+            this.setCell(row, column, cell);
+
+           
+          }
+        }
+        //initial start places
+        var playerCell = new Cell(0);
+        playerCell.mathAction=actions[4];
+        playerCell.setActiveByPlayer(1);
+        this.setCell(0,0,playerCell);
+        var playerCell = new Cell(0);
+        playerCell.mathAction=actions[4];
+        playerCell.setActiveByPlayer(2);
+        this.setCell(this.rows-1, this.columns-1, playerCell);
+      }
+
+      isBoardEmpty() {
+        let visitedCount = 0;
+        for (let row = 0; row < this.rows; row++) {
+          for (let column = 0; column < this.columns; column++) {
+            const cell = this.getCell(row, column);
+            if (cell.isVisitedByPlayer(1) || cell.isVisitedByPlayer(2)) {
+              visitedCount++;
+            }
+          }
+        }
+
+        return visitedCount <= 2;
+      }
+      isNeighbor(x, y, col, row) {
+        const dx = Math.abs(x - col);
+        const dy = Math.abs(y - row);
+        return (dx === 1 && dy === 0) || (dx === 0 && dy === 1) || (dx === 1 && dy === 1);
+      }
+
+      show() {
+        const boardSetupDiv = document.getElementById('boardSetupContainer');
+        if (board.isBoardEmpty()) {
+          boardSetupDiv.style.display= 'block';
+        } else {
+          boardSetupDiv.style.display= 'none';
+        }
+        let gameOver= true;
+
+        const boardContainer = document.getElementById('boardContainer');
+        boardContainer.innerHTML = ''; // Clear the board
+        boardContainer.style.gridTemplateColumns = `repeat(${this.columns}, 1fr)`;
+
+        for (let i = 0; i < this.rows; i++) {
+          for (let j = 0; j < this.columns; j++) {
+            const cell = this.getCell(i,j);
+
+            const cellElement = document.createElement('div');
+            cellElement.classList.add('cell');
+            cellElement.textContent = `${cell.getMathAction()}${cell.getDigit()}`;
+
+            cellElement.setAttribute('cellrow', i);
+            cellElement.setAttribute('cellcol', j);
+           
+            
+            if(cell.isActiveByPlayer(1)) cellElement.classList.add('player1-start');
+            else if(cell.isVisitedByPlayer(1)) cellElement.classList.add('player1-pass');
+
+            if ((players.activePlayer==1) && (this.isNeighbor(i,j, players.player1Position.row, players.player1Position.col)) && (this.isValidMove(i, j)))
+            {
+              cellElement.classList.add('player1-next-cell');
+              cellElement.addEventListener('click', handleCellClick);
+              gameOver = false;
+            }
+
+            
+            if(cell.isActiveByPlayer(2)) cellElement.classList.add('player2-start');
+            else if(cell.isVisitedByPlayer(2)) cellElement.classList.add('player2-pass');
+
+            if ((players.activePlayer==2) && (this.isNeighbor(i,j, players.player2Position.row, players.player2Position.col)) && (this.isValidMove(i, j)))
+            {
+              cellElement.classList.add('player2-next-cell');
+              cellElement.addEventListener('click', handleCellClick);
+              gameOver = false;
+            } 
+            
+            boardContainer.appendChild(cellElement);
+          }
+        }
+        if (gameOver)
+          game.gameOver();
+      }
+
+      
+    
+
+      
+
+      getCell(row, column) {
+        return this.cells[row * this.columns + column];
+      }
+
+      setCell(row, column, cell) {
+        this.cells[row * this.columns + column] = cell;
+      }
+
+      isValidMove(row, column) {
+        const cell = this.getCell(row, column);
+
+        if (cell) {
+          // Check if the cell has a digit and has not been visited by any player
+          return cell.getDigit() !== null && cell.visitedByPlayer === null && cell.activeByPlayer === null ;
+        }
+
+        return false;
+      }
+
+      getBestMoveDirection(row, column) {
+        const cell = this.getCell(row, column);
+
+        if (!cell || cell.getDigit() === null) {
+          return null; // No valid move from an empty cell
+        }
+
+        let bestMoveDirection = null;
+        let bestMoveValue = null;
+
+        // Check if there's a valid move in each direction (up, down, left, right)
+        const directions = [
+          { row: -1, col: 0, direction: 'up' },
+          { row: 1, col: 0, direction: 'down' },
+          { row: 0, col: -1, direction: 'left' },
+          { row: 0, col: 1, direction: 'right' }
+        ];
+
+        for (const direction of directions) {
+          const newRow = row + direction.row;
+          const newCol = column + direction.col;
+
+          if (this.isValidMove(newRow, newCol)) {
+            const newCell = this.getCell(newRow, newCol);
+
+            // Calculate the value for the move based on the math action of the cell
+            const moveValue = applyMathAction(cell.getDigit(), newCell.getMathAction());
+
+            if (bestMoveValue === null || moveValue > bestMoveValue) {
+              bestMoveValue = moveValue;
+              bestMoveDirection = direction.direction;
+            }
+          }
+        }
+
+        return bestMoveDirection;
+      } 
     }
+    //
+    class Players {
+      constructor(player1human, player2human, rows, cols) {
+        this.player1human = player1human;
+        this.player2human = player2human;
+        this.player1Position = { row: 0, col: 0 };
+        this.player2Position = { row: rows-1, col: cols-1 };
+        this.player1Score = 0;
+        this.player2Score = 0;
+        this.activePlayer = 1;
+      }
 
-    // Move player right
-    function moveRight() {
-    // Code for moving player right
-    }
+      clearScores() {
+        this.player1Score=0;
+        this.player2Score=0;
+      }
+      showScores() {
+        const c = document.getElementById('player1-score');
+        c.innerHTML = this.player1Score;
+        const c1 = document.getElementById('player2-score');
+        c1.innerHTML = this.player2Score;
+      }
+     
+        
 
-    // Move player down-right
-    function moveDownRight() {
-    // Code for moving player down-right
-    }
+        
+    
 
-    // Move player down
-    function moveDown() {
-    // Code for moving player down
-    }
+        
+      
+    
 
-    // Move player down-left
-    function moveDownLeft() {
-    // Code for moving player down-left
-    }
+      movePlayer(toRow, toCol) {
+        var newCell = board.getCell(parseInt(toRow), parseInt(toCol));
+        const currentPlayerPosition = this.activePlayer === 1 ? this.player1Position : this.player2Position;
+        const currentCell = board.getCell(currentPlayerPosition.row, currentPlayerPosition.col);
+        
+        currentPlayerPosition.row = parseInt(toRow);
+        currentPlayerPosition.col = parseInt(toCol);
+        
+        
+        currentCell.setVisitedByPlayer(this.activePlayer);
+        currentCell.setActiveByPlayer(null);
 
-    // Move player left
-    function moveLeft() {
-    // Code for moving player left
-    }
+        newCell.setActiveByPlayer(this.activePlayer);
+        
+        this.performMathematicalAction(newCell);
+        this.showScores();
 
-    // Move player up-left
-    function moveUpLeft() {
-    // Code for moving player up-left
-    }
+        this.activePlayer = this.activePlayer === 1 ? 2 : 1; //togle with ternary operator
 
+        board.show();
+      }
 
+      performMathematicalAction(cell) {
 
-    let rows = 6; // Default rows
-    let cols = 6; // Default columns
-
-    // Function to rebuild the board based on the selected dimensions
-    function rebuildBoard() {
-      boardContainer.innerHTML = ''; // Clear the board
-
-      // Generate the new board based on the dimensions
-      for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < cols; j++) {
-          const cell = document.createElement('div');
-          cell.classList.add('cell');
-
-          // Add random mathematical action and digit to the cell
-          const mathActions = ['+', '-', '*', '/'];
-          const randomAction = mathActions[Math.floor(Math.random() * mathActions.length)];
-          const randomDigit = Math.floor(Math.random() * 10);
-          cell.textContent = `${randomAction}${randomDigit}`;
-
-          // Add the cell to the board
-          boardContainer.appendChild(cell);
+        if (this.activePlayer === 1) {
+          this.player1Score = this.calculateScore(cell.mathAction, parseInt(cell.digit), this.player1Score);
+        } else if (this.activePlayer === 2) {
+          this.player2Score = this.calculateScore(cell.mathAction, parseInt(cell.digit), this.player2Score);
         }
       }
 
-      // Add class to first left cell (player 1 start)
-      const firstCell = boardContainer.querySelector('.cell');
-      firstCell.classList.add('player1-start');
-      firstCell.textContent = '0';
-
-       // Add class to last right cell (player 2 start)
-      const lastCell = boardContainer.querySelector('.cell:last-child');
-      lastCell.classList.add('player2-start');
-      lastCell.textContent = '0';
-
-
-      boardContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-
-    }
-
-    // Function to handle button clicks
-    function handleButtonClick(event) {
-      const button = event.target;
-      if (!button.classList.contains('active')) {
-        // Handle button logic here
-        console.log(`Button "${button.textContent}" clicked.`);
+      calculateScore(action, digit, score) {
+        switch (action) {
+          case '+':
+            return score + digit;
+          case '-':
+            return score - digit;
+          case '*':
+            return digit * score;
+          case '/':
+            return score / digit;
+        }
       }
     }
 
-    // Add event listeners to the buttons
-    const buttons = document.querySelectorAll('.button');
-    buttons.forEach(button => button.addEventListener('click', handleButtonClick));
 
-    // Add event listener to the submit button
+    class Game {
+      constructor() {
+        this.totalGamesPlayed = 0;
+        this.player1Wins = 0;
+        this.player2Wins = 0;
+      }
+
+      showTotals() {
+        const c = document.getElementById('total-games');
+        c.innerHTML = this.totalGamesPlayed;
+        const c1 = document.getElementById('player1-wins');
+        c1.innerHTML = this.player1Wins;
+        const c2 = document.getElementById('player2-wins');
+        c2.innerHTML = this.player2Wins;
+      }
+
+      setWin(player)
+      {
+        if (player==1)
+           this.player1Wins++;
+        else
+          this.player2Wins++;
+      }
+      
+      gameOver()
+      {
+
+        
+        if(players.player1Score > players.player2Score) this.setWin(1);
+        else if (players.player2Score > players.player1Score) this.setWin(2); 
+        this.totalGamesPlayed++;
+        players.clearScores();
+
+        this.showTotals();
+
+      }
+    }
+      
+        
+
+
+    // Add event listeners
     submitButton.addEventListener('click', function() {
       const newRows = parseInt(rowsInput.value);
       const newCols = parseInt(colsInput.value);
@@ -227,14 +462,39 @@
       if (!isNaN(newRows) && !isNaN(newCols) && newRows >= 4 && newCols >= 4 && newRows <= 200 && newCols <= 200) {
         rows = newRows;
         cols = newCols;
-        rebuildBoard();
+        board.updateDimensions(rows, cols);
+        board.show();
       } else {
         alert('Please enter valid dimensions (between 4 and 200).');
       }
     });
+    function handleCellClick(event) {
+     
+     const clickedCell = event.target;
 
+     const clickRow = clickedCell.getAttribute('cellrow');
+     const clickCol = clickedCell.getAttribute('cellcol');
+     players.movePlayer(clickRow, clickCol);
+ 
+   }
+
+    
     // Initial board setup
-    //rebuildBoard();
+
+    let rows = 4; // Default rows
+    let cols = 4; // Default columns
+
+    let player1human = true;
+    let player2human = true;
+
+
+
+    const board = new Board(rows, cols);
+    const players = new Players(player1human, player2human, rows, cols);
+    const game = new Game();
+
+    board.show();
+
   </script>
 </body>
 </html>
